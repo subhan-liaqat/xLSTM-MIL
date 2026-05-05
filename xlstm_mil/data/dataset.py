@@ -26,6 +26,33 @@ def infer_label_from_slide_id(slide_id_stem):
     return None
 
 
+def infer_nsclc_label(slide_id_stem, row=None):
+    sid = str(slide_id_stem).lower()
+    row_vals = []
+    if row is not None:
+        for key in ["project_id", "project", "primary_diagnosis", "diagnosis", "label", "class"]:
+            if key in row and pd.notna(row[key]):
+                row_vals.append(str(row[key]).lower())
+    haystack = " ".join([sid] + row_vals)
+
+    if "luad" in haystack or "adenocarcinoma" in haystack:
+        return 1
+    if "lusc" in haystack or "squamous" in haystack:
+        return 0
+    return None
+
+
+def infer_tcga_patient_id(slide_id_stem):
+    sid = str(slide_id_stem).strip()
+    m = re.search(r"(TCGA-[A-Za-z0-9]{2}-[A-Za-z0-9]{4})", sid, flags=re.IGNORECASE)
+    if m:
+        return m.group(1).upper()
+    parts = sid.split("-")
+    if len(parts) >= 3 and parts[0].lower() == "tcga":
+        return "-".join(parts[:3]).upper()
+    return sid.lower()
+
+
 def _xy2d(n_side, x, y):
     d = 0
     s = n_side // 2
@@ -67,9 +94,12 @@ def hilbert_indices(coords_np):
 
 
 class WSIFeatureDataset(Dataset):
-    def __init__(self, embed_dir, patch_dir, process_csv):
+    def __init__(self, embed_dir, patch_dir, process_csv, task: str = "camelyon16"):
         self.embed_dir = Path(embed_dir)
         self.patch_dir = Path(patch_dir)
+        self.task = str(task).strip().lower()
+        if self.task not in {"camelyon16", "tcga_nsclc"}:
+            raise ValueError(f"Unsupported task '{task}'. Expected one of: camelyon16, tcga_nsclc")
 
         df = pd.read_csv(process_csv)
         if "slide_id" not in df.columns:
@@ -85,27 +115,34 @@ class WSIFeatureDataset(Dataset):
         self.samples = []
         for _, row in df.iterrows():
             sid_stem = Path(str(row["slide_id"]).strip()).stem
-            label = infer_label_from_slide_id(sid_stem)
+            if self.task == "camelyon16":
+                label = infer_label_from_slide_id(sid_stem)
+            else:
+                label = infer_nsclc_label(sid_stem, row)
             if label is None:
                 continue
 
             if split_col is not None and pd.notna(row[split_col]):
                 split_name = str(row[split_col]).strip().lower()
             else:
-                sid_lower = sid_stem.lower()
-                if sid_lower.startswith("test_"):
-                    split_name = "test"
-                elif sid_lower.startswith(("normal_", "tumor_")):
-                    split_name = "train"
+                if self.task == "camelyon16":
+                    sid_lower = sid_stem.lower()
+                    if sid_lower.startswith("test_"):
+                        split_name = "test"
+                    elif sid_lower.startswith(("normal_", "tumor_")):
+                        split_name = "train"
+                    else:
+                        split_name = "unknown"
                 else:
-                    split_name = "unknown"
+                    split_name = "unspecified"
 
             key = _norm_id(sid_stem)
             pt_path = pt_map.get(key)
             h5_path = h5_map.get(key)
             if pt_path is None or h5_path is None:
                 continue
-            self.samples.append((sid_stem, pt_path, h5_path, int(label), split_name))
+            patient_id = infer_tcga_patient_id(sid_stem) if self.task == "tcga_nsclc" else sid_stem
+            self.samples.append((sid_stem, pt_path, h5_path, int(label), split_name, patient_id))
 
         if len(self.samples) == 0:
             raise RuntimeError("No matched samples found after pairing manifest <-> pt <-> h5")
@@ -114,7 +151,11 @@ class WSIFeatureDataset(Dataset):
 
         y = np.array([s[3] for s in self.samples], dtype=np.int64)
         split_counts = pd.Series([s[4] for s in self.samples]).value_counts().to_dict()
-        print(f"Loaded {len(self.samples)} slides | normal={(y==0).sum()} tumor={(y==1).sum()}")
+        if self.task == "camelyon16":
+            print(f"Loaded {len(self.samples)} slides | normal={(y==0).sum()} tumor={(y==1).sum()}")
+        else:
+            unique_patients = len({s[5] for s in self.samples})
+            print(f"Loaded {len(self.samples)} slides | LUSC={(y==0).sum()} LUAD={(y==1).sum()} | patients={unique_patients}")
         print(f"Split counts: {split_counts}")
 
     def __len__(self):
@@ -123,6 +164,9 @@ class WSIFeatureDataset(Dataset):
     def indices_for_split(self, split_name):
         target = str(split_name).strip().lower()
         return np.array([i for i, s in enumerate(self.samples) if s[4] == target], dtype=np.int64)
+
+    def patient_ids(self):
+        return [s[5] for s in self.samples]
 
     def _read_coords_h5(self, h5_path, sid=""):
         with h5py.File(h5_path, "r") as f:
@@ -161,7 +205,7 @@ class WSIFeatureDataset(Dataset):
         return order
 
     def load_bag_with_coords(self, idx):
-        sid, pt_path, h5_path, label, split_name = self.samples[idx]
+        sid, pt_path, h5_path, label, split_name, _patient_id = self.samples[idx]
         try:
             feats = torch.load(pt_path, map_location="cpu", weights_only=False)
         except TypeError:

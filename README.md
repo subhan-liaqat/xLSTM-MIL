@@ -1,6 +1,6 @@
 # xLSTM-MIL
 
-Production-style `xLSTM-MIL` training pipeline for whole-slide image (WSI) multiple instance learning using precomputed patch embeddings (CAMELYON16-style layout).
+Production-style `xLSTM-MIL` training pipeline for whole-slide image (WSI) multiple instance learning using precomputed patch embeddings (CAMELYON16 and TCGA-NSCLC layouts).
 
 This repository converts the notebook workflow into a modular Python package with a single CLI entrypoint.
 
@@ -12,7 +12,7 @@ This repository converts the notebook workflow into a modular Python package wit
 - Early stopping and optional stratified K-fold cross-validation.
 - ROC/PR/loss/memory plots.
 - Optional saliency visualization and GPU memory scaling benchmark.
-- Optional Hugging Face dataset download helper.
+- Optional Hugging Face dataset download helper (CAMELYON16).
 
 ## Repository Structure
 
@@ -39,6 +39,13 @@ Either provide directories explicitly, or a `--data-root` containing:
 
 The CSV must include `slide_id`. Optional split columns supported: `split`, `set`, `subset`, `partition`.
 
+For `--task tcga_nsclc`, labels are inferred as:
+- `LUAD` or adenocarcinoma text -> positive class (`1`)
+- `LUSC` or squamous text -> negative class (`0`)
+
+Label inference checks `slide_id` and optional metadata columns:
+`project_id`, `project`, `primary_diagnosis`, `diagnosis`, `label`, `class`.
+
 ## Quick Start
 
 ## 1) Install dependencies
@@ -59,6 +66,17 @@ pip install -r requirements.txt
 py scripts/train.py --data-root "C:\path\to\camelyon16_uni_data"
 ```
 
+### Run on TCGA-NSCLC (LUAD vs LUSC)
+
+```bash
+py scripts/train.py ^
+  --task tcga_nsclc ^
+  --data-root "C:\path\to\tcga_nsclc_data" ^
+  --process-csv "C:\path\to\tcga_nsclc_data\manifest.csv"
+```
+
+If no split column is present in the CSV, the code auto-creates a patient-level 80/20 split (grouped by TCGA patient barcode) to avoid train/validation leakage.
+
 ## 3) Run with Hugging Face download
 
 ```bash
@@ -78,6 +96,7 @@ py scripts/train.py --data-root "C:\path\to\camelyon16_uni_data" --plots-dir "ou
 ## Useful CLI Options
 
 - `--epochs 20` — number of epochs.
+- `--task camelyon16|tcga_nsclc` — dataset/task behavior.
 - `--lr 1e-4` — AdamW learning rate.
 - `--weight-decay 1e-4` — AdamW weight decay.
 - `--max-seq-len 12000` — train/in-epoch eval sequence cap.

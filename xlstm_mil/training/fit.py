@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import average_precision_score, roc_auc_score
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.model_selection import GroupShuffleSplit, StratifiedKFold, train_test_split
 
 from xlstm_mil.config import ModelConfig, TrainConfig
 from xlstm_mil.data.dataset import WSIFeatureDataset
@@ -42,12 +42,18 @@ def _resolve_train_val_indices(
         raise RuntimeError("No training samples detected. Check manifest split labels or slide naming.")
 
     if len(val_idx) == 0:
-        train_idx, val_idx = train_test_split(
-            all_idx,
-            test_size=0.2,
-            random_state=seed,
-            stratify=all_labels,
-        )
+        if getattr(dataset, "task", "") == "tcga_nsclc":
+            groups = np.array(dataset.patient_ids())
+            splitter = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=seed)
+            tr, va = next(splitter.split(all_idx, all_labels, groups=groups))
+            train_idx, val_idx = all_idx[tr], all_idx[va]
+        else:
+            train_idx, val_idx = train_test_split(
+                all_idx,
+                test_size=0.2,
+                random_state=seed,
+                stratify=all_labels,
+            )
 
     print(f"Train slides: {len(train_idx)} | Eval slides: {len(val_idx)}")
     return train_idx, val_idx

@@ -21,6 +21,13 @@ def _parse_optional_int(raw: str) -> int | None:
 def parse_args():
     p = argparse.ArgumentParser(description="Train xLSTM-MIL on WSI patch features.")
     p.add_argument(
+        "--task",
+        type=str,
+        default="camelyon16",
+        choices=["camelyon16", "tcga_nsclc"],
+        help="Task/dataset mode. tcga_nsclc expects LUAD/LUSC labels from slide_id or CSV metadata columns.",
+    )
+    p.add_argument(
         "--data-root",
         type=Path,
         default=None,
@@ -149,7 +156,7 @@ def main():
     if embed_dir is None or patch_dir is None or process_csv is None:
         raise SystemExit("Provide --data-root (with embeddings/patches layout) or all of --embed-dir, --patch-dir, --process-csv")
 
-    dataset = WSIFeatureDataset(embed_dir, patch_dir, process_csv)
+    dataset = WSIFeatureDataset(embed_dir, patch_dir, process_csv, task=args.task)
     feature_dim = infer_feature_dim(dataset)
     print("Detected feature dim:", feature_dim)
 
