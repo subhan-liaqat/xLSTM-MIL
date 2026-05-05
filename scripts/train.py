@@ -11,8 +11,15 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 
+def _parse_optional_int(raw: str) -> int | None:
+    value = raw.strip().lower()
+    if value in {"none", "null"}:
+        return None
+    return int(raw)
+
+
 def parse_args():
-    p = argparse.ArgumentParser(description="Train PFM-xLSTM-MIL on WSI patch features.")
+    p = argparse.ArgumentParser(description="Train xLSTM-MIL on WSI patch features.")
     p.add_argument(
         "--data-root",
         type=Path,
@@ -44,7 +51,12 @@ def parse_args():
     p.add_argument("--epochs", type=int, default=20)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--max-seq-len", type=int, default=12_000)
-    p.add_argument("--max-seq-eval", type=int, default=12_000)
+    p.add_argument(
+        "--max-seq-eval",
+        type=_parse_optional_int,
+        default=12_000,
+        help='Eval stride cap. Use "none" for full bag eval (higher VRAM).',
+    )
     p.add_argument("--k-fold", type=int, default=0, help=">=2 enables stratified K-fold CV on all slides.")
     p.add_argument("--early-stop-patience", type=int, default=10)
     p.add_argument("--weight-decay", type=float, default=1e-4)

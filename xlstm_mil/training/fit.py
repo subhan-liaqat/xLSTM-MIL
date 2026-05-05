@@ -12,7 +12,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 
 from xlstm_mil.config import ModelConfig, TrainConfig
 from xlstm_mil.data.dataset import WSIFeatureDataset
-from xlstm_mil.model.pfmxlstmmil import build_pfmxlstmmil
+from xlstm_mil.model.xlstmmil import build_xlstmmil
 from xlstm_mil.training.subsample import prepare_bag_features, stride_subsample_hilbert
 
 
@@ -191,7 +191,7 @@ def run_training_pipeline(
         model = None
         for fold, (tr, va) in enumerate(skf.split(all_idx, all_labels)):
             print(f"--- Fold {fold + 1}/{train_cfg.k_fold} ---")
-            mdl = build_pfmxlstmmil(feature_dim, model_cfg).to(device)
+            mdl = build_xlstmmil(feature_dim, model_cfg).to(device)
             mdl, hist = run_fit(mdl, dataset, all_idx[tr], all_idx[va], device, train_cfg)
             cv_histories.append(hist)
 
@@ -234,7 +234,7 @@ def run_training_pipeline(
             feature_dim=feature_dim,
         )
 
-    model = build_pfmxlstmmil(feature_dim, model_cfg).to(device)
+    model = build_xlstmmil(feature_dim, model_cfg).to(device)
     print(model.__class__.__name__)
     if len(model.blocks) > 0:
         print("First mLSTM block:")

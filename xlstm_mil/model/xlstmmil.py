@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -112,7 +113,7 @@ def resolve_mlstm_block_factory(
     raise RuntimeError(f"Could not construct official mLSTMBlock. errors={errors}")
 
 
-class PFMxLSTMMIL(nn.Module):
+class XLSTMMIL(nn.Module):
     def __init__(
         self,
         in_dim: int,
@@ -151,7 +152,7 @@ class PFMxLSTMMIL(nn.Module):
         return self.cls_head(pooled)
 
 
-def build_pfmxlstmmil(in_dim: int, mcfg: ModelConfig) -> PFMxLSTMMIL:
+def build_xlstmmil(in_dim: int, mcfg: ModelConfig) -> XLSTMMIL:
     factory = resolve_mlstm_block_factory(
         hidden_dim=mcfg.hidden_dim,
         context_length=mcfg.mlstm_context_length,
@@ -159,7 +160,7 @@ def build_pfmxlstmmil(in_dim: int, mcfg: ModelConfig) -> PFMxLSTMMIL:
         num_heads=mcfg.num_heads,
         mlstm_dropout=mcfg.mlstm_dropout,
     )
-    return PFMxLSTMMIL(
+    return XLSTMMIL(
         in_dim,
         mlstm_block_factory=factory,
         hidden_dim=mcfg.hidden_dim,

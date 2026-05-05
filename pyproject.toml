@@ -1,7 +1,7 @@
 [project]
 name = "xlstm-mil"
 version = "0.1.0"
-description = "PFM-xLSTM-MIL training pipeline for WSI MIL (CAMELYON16-style features)"
+description = "xLSTM-MIL training pipeline for WSI MIL (CAMELYON16-style features)"
 requires-python = ">=3.10"
 dependencies = [
   "torch>=2.0",

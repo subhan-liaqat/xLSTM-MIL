@@ -59,7 +59,7 @@ def plot_seq_memory_scaling(mem_df, out_path: Path | None = None, show: bool = F
     if mem_df.empty:
         return
     plt.figure(figsize=(7, 4))
-    plt.plot(mem_df["seq_len"], mem_df["peak_mem_gb"], marker="o", linewidth=2, label="PFM-xLSTM (chunkwise)")
+    plt.plot(mem_df["seq_len"], mem_df["peak_mem_gb"], marker="o", linewidth=2, label="xLSTM-MIL (chunkwise)")
     plt.xlabel("Sequence Length (patches)")
     plt.ylabel("Peak GPU Memory (GB)")
     plt.title("Memory Scaling vs Sequence Length")

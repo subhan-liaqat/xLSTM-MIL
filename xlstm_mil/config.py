@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class TrainConfig:
     seed: int = 42
     max_seq_len: int = 12_000
-    max_seq_eval: int = 12_000
+    max_seq_eval: int | None = 12_000
     weight_decay: float = 1e-4
     k_fold: int = 0
     early_stop_patience: int = 10

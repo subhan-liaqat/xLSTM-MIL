@@ -15,7 +15,7 @@ from sklearn.metrics import (
 from xlstm_mil.training.subsample import stride_subsample_hilbert
 
 
-def evaluate_model(model, dataset_obj, indices, device: torch.device, max_len: int):
+def evaluate_model(model, dataset_obj, indices, device: torch.device, max_len: int | None):
     model.eval()
     y_true, y_prob = [], []
     with torch.no_grad():
