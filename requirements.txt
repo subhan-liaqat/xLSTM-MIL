@@ -1,0 +1,14 @@
+# PyTorch: install separately for your CUDA/CPU variant, e.g. from https://pytorch.org
+torch>=2.0
+
+h5py>=3.8
+pandas>=2.0
+scikit-learn>=1.3
+matplotlib>=3.7
+hilbertsfc>=1.6
+huggingface_hub>=0.20
+timm>=0.9
+numpy>=1.24
+
+# Official xLSTM (git install per upstream)
+xlstm @ git+https://github.com/NX-AI/xlstm.git
